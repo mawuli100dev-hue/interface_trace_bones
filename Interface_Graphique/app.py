@@ -17,7 +17,7 @@ from engine import (
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 icon = Image.open(os.path.join(BASE_DIR, "favicon.png"))
 
-st.set_page_config(page_title="Wildlife Classifier", page_icon=icon,
+st.set_page_config(page_title="Bone Trace Classifier", page_icon=icon,
                    layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
