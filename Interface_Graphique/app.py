@@ -1,6 +1,7 @@
 """
-app.py — Wildlife Classifier v10
-Fix définitif : résultats persistants toute la session quelle que soit l'entrée utilisée.
+app.py — Wildlife Classifier v11
+- Suppression de l'option dossier
+- Aperçu image au clic sur le nom de fichier dans le tableau
 """
 
 import io, os, tempfile
@@ -9,7 +10,7 @@ import streamlit as st
 from PIL import Image
 
 from engine import (
-    classify_folder, classify_image, compute_stats,
+    classify_image, compute_stats,
     launch_training, load_model, results_to_dataframe, SUPPORTED_EXTENSIONS,
 )
 
@@ -48,21 +49,21 @@ footer{visibility:hidden;}
 """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SESSION STATE — initialisé une seule fois, jamais réécrasé par les re-runs
+# SESSION STATE
 # ══════════════════════════════════════════════════════════════════════════════
-if "model"          not in st.session_state: st.session_state.model          = None
-if "class_names"    not in st.session_state: st.session_state.class_names    = []
-if "model_name"     not in st.session_state: st.session_state.model_name     = ""
-if "results"        not in st.session_state: st.session_state.results        = {}   # dict nom→row
-if "last_single"    not in st.session_state: st.session_state.last_single    = None
-if "train_log"      not in st.session_state: st.session_state.train_log      = ""
-if "train_running"  not in st.session_state: st.session_state.train_running  = False
-if "train_progress" not in st.session_state: st.session_state.train_progress = 0.0
-# Clés de suivi pour détecter de NOUVEAUX uploads (différent de seen_files)
+if "model"            not in st.session_state: st.session_state.model            = None
+if "class_names"      not in st.session_state: st.session_state.class_names      = []
+if "model_name"       not in st.session_state: st.session_state.model_name       = ""
+if "results"          not in st.session_state: st.session_state.results          = {}
+if "last_single"      not in st.session_state: st.session_state.last_single      = None
+if "train_log"        not in st.session_state: st.session_state.train_log        = ""
+if "train_running"    not in st.session_state: st.session_state.train_running    = False
+if "train_progress"   not in st.session_state: st.session_state.train_progress   = 0.0
 if "prev_single_name" not in st.session_state: st.session_state.prev_single_name = None
 if "prev_multi_names" not in st.session_state: st.session_state.prev_multi_names = set()
+# Nom du fichier sélectionné pour l'aperçu dans le tableau
+if "preview_file"     not in st.session_state: st.session_state.preview_file     = None
 
-# ── results est un DICT {nom_fichier: row} — jamais écrasé, seulement enrichi
 def add_result(row: dict):
     st.session_state.results[row["Fichier"]] = row
 
@@ -104,7 +105,7 @@ with st.sidebar:
         <div style="width:4px;height:28px;background:{GREEN};border-radius:2px;flex-shrink:0;"></div>
         <div>
           <div style="font-size:.95rem;font-weight:600;color:{INK};">Wildlife Classifier</div>
-          <div style="font-size:.67rem;color:{GREEN};margin-top:1px;letter-spacing:.06em;">ResNet · TensorFlow</div>
+          <div style="font-size:.67rem;color:{GREEN};margin-top:1px;letter-spacing:.06em;">ResNet</div>
         </div>
       </div>
     </div>""", unsafe_allow_html=True)
@@ -113,17 +114,17 @@ with st.sidebar:
     model_file = st.file_uploader("h5", type=["h5"], label_visibility="collapsed",
                                   help="Limite → .streamlit/config.toml → maxUploadSize")
     if model_file:
-        # Recharge uniquement si c'est un nouveau modèle
         if model_file.name != st.session_state.model_name:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as tmp:
                 tmp.write(model_file.read()); tmp_path = tmp.name
             with st.spinner("Chargement du modèle…"):
                 mdl, cn = load_model(tmp_path)
-            st.session_state.model          = mdl
-            st.session_state.class_names    = cn
-            st.session_state.model_name     = model_file.name
-            st.session_state.results        = {}
-            st.session_state.last_single    = None
+            st.session_state.model            = mdl
+            st.session_state.class_names      = cn
+            st.session_state.model_name       = model_file.name
+            st.session_state.results          = {}
+            st.session_state.last_single      = None
+            st.session_state.preview_file     = None
             st.session_state.prev_single_name = None
             st.session_state.prev_multi_names = set()
             st.success(f"✓ {model_file.name}")
@@ -154,12 +155,13 @@ with st.sidebar:
         if st.button("↺  Réinitialiser", use_container_width=True):
             st.session_state.results          = {}
             st.session_state.last_single      = None
+            st.session_state.preview_file     = None
             st.session_state.prev_single_name = None
             st.session_state.prev_multi_names = set()
             st.rerun()
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
-t1, t2 = st.tabs(["  🔍  Classification  ", "  ⚙️  Réentraînement  "])
+t1, t2 = st.tabs(["  Classification  ", "  Réentraînement  "])
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 1 — CLASSIFICATION
@@ -179,9 +181,9 @@ with t1:
     model       = st.session_state.model
     class_names = st.session_state.class_names
 
-    ca, cb, cc = st.columns(3, gap="medium")
+    # ── Deux colonnes d'entrée (dossier supprimé) ──────────────────────────
+    ca, cb = st.columns(2, gap="large")
 
-    # ── Les 3 widgets d'entrée ─────────────────────────────────────────────
     with ca:
         section("Image unique")
         up1 = st.file_uploader("s", type=[e.lstrip(".") for e in SUPPORTED_EXTENSIONS],
@@ -191,14 +193,8 @@ with t1:
         upm = st.file_uploader("m", type=[e.lstrip(".") for e in SUPPORTED_EXTENSIONS],
                                accept_multiple_files=True, key="sm",
                                label_visibility="collapsed")
-    with cc:
-        section("Dossier")
-        fp    = st.text_input("d", placeholder="/chemin/vers/dossier",
-                              label_visibility="collapsed")
-        run_f = st.button("▶  Analyser le dossier", use_container_width=True)
 
-    # ── Image unique ──────────────────────────────────────────────────────────
-    # On classifie UNIQUEMENT si c'est un fichier différent du précédent upload
+    # ── Image unique ───────────────────────────────────────────────────────
     if up1 is not None:
         if up1.name != st.session_state.prev_single_name:
             raw = up1.read()
@@ -213,7 +209,6 @@ with t1:
             st.session_state.prev_single_name = up1.name
             st.session_state.last_single      = up1.name
 
-        # Aperçu — toujours affiché depuis results (jamais perdu)
         last = st.session_state.last_single
         if last and last in st.session_state.results:
             row  = st.session_state.results[last]
@@ -246,8 +241,7 @@ with t1:
                     f"Confiance : <b style='color:{INK};'>{conf*100:.2f}%</b></div>"
                     f"</div>", unsafe_allow_html=True)
 
-    # ── Images multiples ──────────────────────────────────────────────────────
-    # On classifie uniquement les NOUVEAUX fichiers (pas déjà dans prev_multi_names)
+    # ── Images multiples ───────────────────────────────────────────────────
     if upm:
         current_names = {uf.name for uf in upm}
         nouveaux = [uf for uf in upm
@@ -263,30 +257,17 @@ with t1:
                         pred, conf = classify_image(model, class_names, p)
                         if conf < threshold: pred = "inconnu"
                         row = {"Fichier": uf.name, "Classe": pred,
-                               "Confiance": f"{conf*100:.2f}%", "_conf_raw": conf}
+                               "Confiance": f"{conf*100:.2f}%",
+                               "_conf_raw": conf,
+                               "_raw_bytes": raw}   # ← on stocke les bytes pour l'aperçu
                     except Exception:
                         row = {"Fichier": uf.name, "Classe": "Erreur",
-                               "Confiance": "0%", "_conf_raw": 0.0}
+                               "Confiance": "0%", "_conf_raw": 0.0,
+                               "_raw_bytes": None}
                     add_result(row)
-            # Mémorise tous les noms vus dans cette session multi
             st.session_state.prev_multi_names |= current_names
 
-    # ── Dossier ───────────────────────────────────────────────────────────────
-    if run_f:
-        if not fp or not os.path.isdir(fp):
-            st.error("Chemin invalide ou inaccessible.")
-        else:
-            with st.spinner("Analyse du dossier…"):
-                news = classify_folder(model, class_names, fp)
-            nb = 0
-            for r in news:
-                if r["_conf_raw"] < threshold: r["Classe"] = "inconnu"
-                add_result(r)
-                nb += 1
-            st.success(f"✅ {nb} image(s) analysée(s) — résultats cumulés : "
-                       f"{len(st.session_state.results)}")
-
-    # ── Stats & tableau ───────────────────────────────────────────────────────
+    # ── Stats & tableau ────────────────────────────────────────────────────
     res_list = all_results()
     if res_list:
         stats = compute_stats(res_list)
@@ -309,15 +290,77 @@ with t1:
                 pct_s = f"{round(val/total*100)}%" if total else "—"
                 st.markdown(stat_card(val, ttl, col, pct_s), unsafe_allow_html=True)
 
-        section("Résultats")
+        # ── Tableau avec sélection pour aperçu ────────────────────────────
+        section("Résultats  —  cliquez sur une ligne pour voir la photo")
+
         df = results_to_dataframe(res_list)
-        st.dataframe(df, use_container_width=True, hide_index=True,
-                     height=min(540, 56 + len(df) * 35),
-                     column_config={
-                         "Fichier":   st.column_config.TextColumn("Fichier",   width="large"),
-                         "Classe":    st.column_config.TextColumn("Classe",    width="medium"),
-                         "Confiance": st.column_config.TextColumn("Confiance", width="small"),
-                     })
+
+        # st.dataframe avec on_select pour détecter la ligne cliquée
+        event = st.dataframe(
+            df,
+            use_container_width=True,
+            hide_index=True,
+            height=min(540, 56 + len(df) * 35),
+            on_select="rerun",
+            selection_mode="single-row",
+            column_config={
+                "Fichier":   st.column_config.TextColumn("Fichier",   width="large"),
+                "Classe":    st.column_config.TextColumn("Classe",    width="medium"),
+                "Confiance": st.column_config.TextColumn("Confiance", width="small"),
+            },
+        )
+
+        # Récupération de la ligne sélectionnée
+        selected_rows = event.selection.rows if event.selection else []
+        if selected_rows:
+            idx = selected_rows[0]
+            fname = df.iloc[idx]["Fichier"]
+            st.session_state.preview_file = fname
+
+        # ── Panneau d'aperçu ──────────────────────────────────────────────
+        pf = st.session_state.preview_file
+        if pf and pf in st.session_state.results:
+            row = st.session_state.results[pf]
+            raw_bytes = row.get("_raw_bytes")
+            if raw_bytes:
+                pred = row["Classe"]
+                conf = row["_conf_raw"]
+                unk  = pred in ("inconnu", "Erreur")
+                col  = GREY if unk else GREEN
+                bg   = "#f5f5f4" if unk else GREEN_L
+                bd   = "#ebebea" if unk else BORDER
+                icon = "—" if unk else "✓"
+
+                st.markdown(
+                    f"<div style='margin-top:16px;background:{bg};"
+                    f"border:1px solid {bd};border-radius:10px;"
+                    f"padding:16px 20px;display:flex;align-items:flex-start;gap:20px;'>",
+                    unsafe_allow_html=True)
+
+                pc1, pc2 = st.columns([1, 2], gap="medium")
+                with pc1:
+                    img = Image.open(io.BytesIO(raw_bytes))
+                    img.thumbnail((280, 280))
+                    st.image(img, caption=pf)
+                with pc2:
+                    st.markdown(
+                        f"<div style='padding-top:8px;'>"
+                        f"<div style='font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;"
+                        f"color:#b5b5b2;margin-bottom:4px;'>Fichier</div>"
+                        f"<div style='font-size:.9rem;font-weight:600;color:{INK};"
+                        f"margin-bottom:14px;word-break:break-all;'>{pf}</div>"
+                        f"<div style='font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;"
+                        f"color:#b5b5b2;margin-bottom:4px;'>Prédiction</div>"
+                        f"<div style='font-size:1.4rem;font-weight:700;color:{col};"
+                        f"margin-bottom:14px;'>{icon}&nbsp;{pred}</div>"
+                        f"<div style='background:{BORDER};border-radius:999px;"
+                        f"height:5px;overflow:hidden;width:100%;'>"
+                        f"<div style='height:5px;border-radius:999px;background:{col};"
+                        f"width:{int(conf*100)}%;'></div></div>"
+                        f"<div style='font-size:.72rem;color:#b5b5b2;margin-top:6px;'>"
+                        f"Confiance : <b style='color:{INK};'>{conf*100:.2f}%</b></div>"
+                        f"</div>",
+                        unsafe_allow_html=True)
 
         st.download_button(
             "⬇  Télécharger les résultats (CSV)",
@@ -366,7 +409,7 @@ with t2:
     st.markdown(f"<hr style='border:none;border-top:1px solid {BORDER};margin:20px 0;'>",
                 unsafe_allow_html=True)
 
-    go = st.button("🚀  Lancer l'entraînement",
+    go = st.button(" Lancer l'entraînement",
                    disabled=st.session_state.train_running, type="primary")
 
     if go:
@@ -404,6 +447,6 @@ with t2:
             f"overflow-y:auto;white-space:pre-wrap;line-height:1.7;'>{log}</div>",
             unsafe_allow_html=True)
         if st.session_state.train_running:
-            if st.button("🔄  Rafraîchir"): st.rerun()
+            if st.button(" Rafraîchir"): st.rerun()
         else:
-            st.success("✅ Entraînement terminé.")
+            st.success(" Entraînement terminé.")
