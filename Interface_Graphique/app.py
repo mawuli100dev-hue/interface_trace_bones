@@ -45,6 +45,7 @@ button[kind="primary"]:hover{background:var(--green-dk)!important;border-color:v
 [data-testid="stVegaLiteChart"]{background:var(--surface)!important;border:1px solid var(--border-act)!important;border-radius:var(--radius)!important;padding:8px!important;}
 [data-testid="stRadio"] label{color:var(--ink)!important;}
 footer{visibility:hidden;}
+[data-testid="stToolbarActions"]{visibility:hidden!important;}
 </style>
 """, unsafe_allow_html=True)
 
