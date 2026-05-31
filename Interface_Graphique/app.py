@@ -14,7 +14,10 @@ from engine import (
     launch_training, load_model, results_to_dataframe, SUPPORTED_EXTENSIONS,
 )
 
-st.set_page_config(page_title="Wildlife Classifier", page_icon="favicon.png",
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+icon = Image.open(os.path.join(BASE_DIR, "favicon.png"))
+
+st.set_page_config(page_title="Wildlife Classifier", page_icon=icon,
                    layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
