@@ -1,5 +1,5 @@
 """
-app.py — Wildlife Classifier v11
+app.py - Wildlife Classifier v11
 - Suppression de l'option dossier
 - Aperçu image au clic sur le nom de fichier dans le tableau
 """
@@ -14,7 +14,7 @@ from engine import (
     launch_training, load_model, results_to_dataframe, SUPPORTED_EXTENSIONS,
 )
 
-st.set_page_config(page_title="Wildlife Classifier", page_icon="../image/favicon.png",
+st.set_page_config(page_title="Wildlife Classifier", page_icon="./favicon.png",
                    layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
@@ -165,7 +165,7 @@ with st.sidebar:
 t1, t2 = st.tabs(["  Classification  ", "  Réentraînement  "])
 
 # ════════════════════════════════════════════════════════════════════════════
-# TAB 1 — CLASSIFICATION
+# TAB 1 - CLASSIFICATION
 # ════════════════════════════════════════════════════════════════════════════
 with t1:
     st.markdown(f"<h1 style='font-size:1.15rem;font-weight:600;color:{INK};"
@@ -226,7 +226,7 @@ with t1:
                 col  = GREY if unk else GREEN
                 bg   = "#f5f5f4" if unk else GREEN_L
                 bd   = "#ebebea" if unk else BORDER
-                icon = "—" if unk else "✓"
+                icon = "-" if unk else "✓"
                 pct_bar = int(conf * 100)
                 st.markdown(
                     f"<div style='margin-top:16px;background:{bg};"
@@ -288,11 +288,11 @@ with t1:
         cols = st.columns(len(cards), gap="small")
         for i, (ttl, val, col) in enumerate(cards):
             with cols[i]:
-                pct_s = f"{round(val/total*100)}%" if total else "—"
+                pct_s = f"{round(val/total*100)}%" if total else "-"
                 st.markdown(stat_card(val, ttl, col, pct_s), unsafe_allow_html=True)
 
         # ── Tableau avec sélection pour aperçu ────────────────────────────
-        section("Résultats  —  cliquez sur une ligne pour voir la photo")
+        section("Résultats  -  cliquez sur une ligne pour voir la photo")
 
         df = results_to_dataframe(res_list)
 
@@ -330,7 +330,7 @@ with t1:
                 col  = GREY if unk else GREEN
                 bg   = "#f5f5f4" if unk else GREEN_L
                 bd   = "#ebebea" if unk else BORDER
-                icon = "—" if unk else "✓"
+                icon = "-" if unk else "✓"
 
                 st.markdown(
                     f"<div style='margin-top:16px;background:{bg};"
@@ -381,7 +381,7 @@ with t1:
                          height=180, use_container_width=True)
 
 # ════════════════════════════════════════════════════════════════════════════
-# TAB 2 — RÉENTRAÎNEMENT
+# TAB 2 - RÉENTRAÎNEMENT
 # ════════════════════════════════════════════════════════════════════════════
 with t2:
     st.markdown(
