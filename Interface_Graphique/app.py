@@ -108,7 +108,7 @@ with st.sidebar:
       <div style="display:flex;align-items:center;gap:8px;">
         <div style="width:4px;height:28px;background:{GREEN};border-radius:2px;flex-shrink:0;"></div>
         <div>
-          <div style="font-size:.95rem;font-weight:600;color:{INK};">Wildlife Classifier</div>
+          <div style="font-size:.95rem;font-weight:600;color:{INK};">Bone Trace Classifier</div>
           <div style="font-size:.67rem;color:{GREEN};margin-top:1px;letter-spacing:.06em;">ResNet</div>
         </div>
       </div>
