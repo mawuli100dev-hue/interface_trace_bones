@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.pyc
+
+# Modèles IA
+*.h5
+
+# Cache divers
+.ipynb_checkpoints/
