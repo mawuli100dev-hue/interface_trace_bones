@@ -14,7 +14,7 @@ from engine import (
     launch_training, load_model, results_to_dataframe, SUPPORTED_EXTENSIONS,
 )
 
-st.set_page_config(page_title="Wildlife Classifier", page_icon="🌿",
+st.set_page_config(page_title="Wildlife Classifier", page_icon="🦴🦴",
                    layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
