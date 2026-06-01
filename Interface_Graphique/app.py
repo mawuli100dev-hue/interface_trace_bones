@@ -9,6 +9,10 @@ import pandas as pd
 import streamlit as st
 from PIL import Image
 
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"        # réduit les logs TF
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"        # force CPU, libère mémoire GPU
+os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
+
 from engine import (
     classify_image, compute_stats,
     launch_training, load_model, results_to_dataframe, SUPPORTED_EXTENSIONS,
